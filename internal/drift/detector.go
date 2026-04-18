@@ -2,60 +2,53 @@ package drift
 
 import (
 	"fmt"
-	"reflect"
 )
 
-// Field represents a single configuration field with its value.
-type Field struct {
-	Name  string
-	Value interface{}
-}
-
-// Difference describes a detected drift between expected and actual values.
+// Difference represents a single detected drift between expected and actual config.
 type Difference struct {
+	Service  string
 	Field    string
-	Expected interface{}
-	Actual   interface{}
+	Expected string
+	Actual   string
 }
 
+// String returns a human-readable description of the difference.
 func (d Difference) String() string {
-	return fmt.Sprintf("field %q: expected %v, got %v", d.Field, d.Expected, d.Actual)
+	return fmt.Sprintf("[%s] %s: expected %q, got %q", d.Service, d.Field, d.Expected, d.Actual)
 }
 
-// Result holds the outcome of a drift detection run.
-type Result struct {
-	ServiceName string
-	Diffs       []Difference
+// Config holds a named set of key-value configuration fields.
+type Config struct {
+	Name   string
+	Fields map[string]string
 }
 
-// HasDrift returns true if any differences were found.
-func (r Result) HasDrift() bool {
-	return len(r.Diffs) > 0
-}
-
-// Detect compares expected fields against actual fields and returns a Result.
-// Fields present in expected but missing from actual are reported as drift.
-func Detect(serviceName string, expected, actual map[string]interface{}) Result {
-	result := Result{ServiceName: serviceName}
-
-	for key, expVal := range expected {
-		actVal, ok := actual[key]
+// Detect compares expected config against actual config and returns all differences.
+func Detect(expected, actual Config) []Difference {
+	var diffs []Difference
+	service := expected.Name
+	if service == "" {
+		service = actual.Name
+	}
+	for key, expVal := range expected.Fields {
+		actVal, ok := actual.Fields[key]
 		if !ok {
-			result.Diffs = append(result.Diffs, Difference{
+			diffs = append(diffs, Difference{
+				Service:  service,
 				Field:    key,
 				Expected: expVal,
-				Actual:   nil,
+				Actual:   "<missing>",
 			})
 			continue
 		}
-		if !reflect.DeepEqual(expVal, actVal) {
-			result.Diffs = append(result.Diffs, Difference{
+		if expVal != actVal {
+			diffs = append(diffs, Difference{
+				Service:  service,
 				Field:    key,
 				Expected: expVal,
 				Actual:   actVal,
 			})
 		}
 	}
-
-	return result
+	return diffs
 }
