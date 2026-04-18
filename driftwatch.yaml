@@ -1,0 +1,19 @@
+# driftwatch configuration file
+# Defines services to monitor for configuration drift.
+
+output_format: text  # text | json
+
+services:
+  - name: api-service
+    source_path: ./manifests/api-service.yaml
+    deployed_at: k8s://default/api-service
+    labels:
+      env: production
+      team: platform
+
+  - name: worker
+    source_path: ./manifests/worker.yaml
+    deployed_at: k8s://default/worker
+    labels:
+      env: production
+      team: data
